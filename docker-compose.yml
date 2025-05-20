@@ -1,0 +1,22 @@
+services:
+  fhe-demo:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      - ./outputs:/app/outputs
+      - ./data:/app/data
+    environment:
+      - RUST_LOG=info
+    command: ["--samples", "1000", "--seed", "42"]
+
+  interactive-demo:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      - ./outputs:/app/outputs
+      - ./data:/app/data
+    environment:
+      - RUST_LOG=info
+    entrypoint: ["/app/interactive_demo"]

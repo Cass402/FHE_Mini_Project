@@ -1,0 +1,9 @@
+[package]
+name = "FHE_Mini_Project"
+version = "0.1.0"
+edition = "2024"
+authors = ["Srivatsav Erramilli <srivatsaverramilli@gmail.com>"]
+description = "FHE mini project for secure computation on encrypted biosample data"
+
+[dependencies]
+

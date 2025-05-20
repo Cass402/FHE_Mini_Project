@@ -1,0 +1,55 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "lldb",
+      "request": "launch",
+      "name": "Debug executable 'fhe_mini_project'",
+      "cargo": {
+        "args": [
+          "build",
+          "--bin=fhe_mini_project",
+          "--package=fhe_mini_project"
+        ],
+        "filter": {
+          "name": "fhe_mini_project",
+          "kind": "bin"
+        }
+      },
+      "args": [],
+      "cwd": "${workspaceFolder}"
+    },
+    {
+      "type": "lldb",
+      "request": "launch",
+      "name": "Debug interactive demo",
+      "cargo": {
+        "args": [
+          "build",
+          "--example=interactive_demo",
+          "--package=fhe_mini_project"
+        ],
+        "filter": {
+          "name": "interactive_demo",
+          "kind": "example"
+        }
+      },
+      "args": [],
+      "cwd": "${workspaceFolder}"
+    },
+    {
+      "type": "lldb",
+      "request": "launch",
+      "name": "Debug unit tests",
+      "cargo": {
+        "args": ["test", "--no-run", "--package=fhe_mini_project"],
+        "filter": {
+          "name": "fhe_mini_project",
+          "kind": "lib"
+        }
+      },
+      "args": [],
+      "cwd": "${workspaceFolder}"
+    }
+  ]
+}
