@@ -49,6 +49,20 @@ pub struct EncryptedCategorical {
     pub vectors: Vec<EncryptedVector>, // Encrypted vectors for each category
 }
 
+/// Implements the Default trait for BiosampleFHE
+///
+/// This implementation allows creating a BiosampleFHE instance using the default() method,
+/// which simply calls the new() method to generate fresh encryption keys.
+///
+/// # Returns
+///
+/// A new BiosampleFHE instance with initialized keys
+impl Default for BiosampleFHE {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl BiosampleFHE {
     /// Creates a new instance of BiosampleFHE with freshly generated keys
     ///

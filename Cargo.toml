@@ -34,3 +34,4 @@ bincode = "1.3"
 
 [dev-dependencies]
 criterion = "0.5.1"
+fhe_mini_project = { path = "."}

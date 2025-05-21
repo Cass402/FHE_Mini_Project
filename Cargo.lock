@@ -759,6 +759,7 @@ dependencies = [
  "criterion",
  "csv",
  "env_logger",
+ "fhe_mini_project",
  "log",
  "plotters",
  "polars",

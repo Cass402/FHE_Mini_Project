@@ -43,6 +43,19 @@ struct Args {
     output_dir: String,
 }
 
+/// Main function for the FHE Demo application.
+///
+/// This function orchestrates the entire workflow:
+/// 1. Parses command-line arguments
+/// 2. Generates or loads biosample data
+/// 3. Encrypts the data using Fully Homomorphic Encryption
+/// 4. Performs secure computations on the encrypted data
+/// 5. Decrypts and verifies the results
+/// 6. Generates visualizations of the results and performance metrics
+///
+/// # Returns
+///
+/// Returns `Ok(())` if the program executes successfully, or an error if any step fails.
 fn main() -> Result<(), Box<dyn Error>> {
     // Initialize logging
     env_logger::init_from_env(
