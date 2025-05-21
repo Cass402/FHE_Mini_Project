@@ -6,13 +6,13 @@ use chrono::{Duration, Utc}; // For generating random dates
 use csv::Writer; // For writing CSV files
 use rand::prelude::*; // For generating random numbers
 use rand_distr::{Distribution, Normal}; // For generating normally distributed random numbers
-use serde::{Serialize, Deserialize}; // For serializing and deserializing data (e.g., to/from CSV)
+use serde::{Deserialize, Serialize}; // For serializing and deserializing data (e.g., to/from CSV)
 use std::error::Error; // For error handling
 use std::fs::File; // For file operations
 use std::path::Path; // For path operations
 
 /// Represents a biosample record with patient and medical information
-/// 
+///
 /// This struct contains various attributes of a biosample including patient identifiers,
 /// demographic information, medical measurements, and collection metadata.
 /// It is used for generating and storing synthetic biosample data.
@@ -26,7 +26,7 @@ pub struct BiosampleRecord {
     pub cholesterol_level: f64,
     pub marker_alpha: bool,
     pub collection_date: String,
-    pub facility_id: u32
+    pub facility_id: u32,
 }
 
 /// Generates a vector of synthetic biosample records for testing and development
@@ -41,7 +41,10 @@ pub struct BiosampleRecord {
 ///
 /// # Returns
 /// * `Result<Vec<BiosampleRecord>, Box<dyn Error>>` - A vector of generated biosample records or an error
-pub fn generate_biosample_data(num_samples: usize, seed: u64) -> Result<Vec<BiosampleRecord>, Box<dyn Error>> {
+pub fn generate_biosample_data(
+    num_samples: usize,
+    seed: u64,
+) -> Result<Vec<BiosampleRecord>, Box<dyn Error>> {
     // Initialize a random number generator with a seed
     let mut random_num_gen = StdRng::seed_from_u64(seed);
 
@@ -63,16 +66,20 @@ pub fn generate_biosample_data(num_samples: usize, seed: u64) -> Result<Vec<Bios
         // Generate patient age between 18 and 90
         let age_f64 = f64::round(age_dist.sample(&mut random_num_gen));
         let age = age_f64.clamp(18.0, 90.0) as u32;
-        
+
         // Generate patient gender
-        let gender = if random_num_gen.gen_bool(0.5) { "Male" } else { "Female" };
+        let gender = if random_num_gen.gen_bool(0.5) {
+            "Male"
+        } else {
+            "Female"
+        };
         // Generate blood type based on weighted random selection
         let blood_type_index = {
             let mut cumulative = 0.0;
             let r: f64 = random_num_gen.gen();
             let mut selected = 0;
 
-            for(i, &weight) in blood_type_weights.iter().enumerate() {
+            for (i, &weight) in blood_type_weights.iter().enumerate() {
                 cumulative += weight;
                 if r < cumulative {
                     selected = i;
@@ -93,10 +100,12 @@ pub fn generate_biosample_data(num_samples: usize, seed: u64) -> Result<Vec<Bios
 
         // Generate collection date within the last year
         let days_offset = random_num_gen.gen_range(0..365);
-        let collection_date = (base_date + Duration::days(days_offset)).format("%Y-%m-%d").to_string();
+        let collection_date = (base_date + Duration::days(days_offset))
+            .format("%Y-%m-%d")
+            .to_string();
 
         // Generate facility ID
-        let facility_id = random_num_gen.gen_range(1..6); 
+        let facility_id = random_num_gen.gen_range(1..6);
 
         // Create a new biosample record
         let biosample_record = BiosampleRecord {
@@ -108,7 +117,7 @@ pub fn generate_biosample_data(num_samples: usize, seed: u64) -> Result<Vec<Bios
             cholesterol_level,
             marker_alpha,
             collection_date,
-            facility_id
+            facility_id,
         };
 
         // Add the record to the vector
@@ -120,16 +129,19 @@ pub fn generate_biosample_data(num_samples: usize, seed: u64) -> Result<Vec<Bios
 }
 
 /// Saves a collection of biosample records to a CSV file.
-/// 
+///
 /// # Arguments
-/// 
+///
 /// * `biosample_records` - A slice of BiosampleRecord structs to be saved
 /// * `path` - The file path where the CSV will be written
-/// 
+///
 /// # Returns
-/// 
+///
 /// * `Result<(), Box<dyn Error>>` - Ok(()) on success, or an error if the operation fails
-pub fn save_biosample_data(biosample_records: &[BiosampleRecord], path: &Path) -> Result<(), Box<dyn Error>> {
+pub fn save_biosample_data(
+    biosample_records: &[BiosampleRecord],
+    path: &Path,
+) -> Result<(), Box<dyn Error>> {
     // Create a CSV writer
     let file = File::create(path)?;
     let mut wtr = Writer::from_writer(file);
@@ -145,13 +157,13 @@ pub fn save_biosample_data(biosample_records: &[BiosampleRecord], path: &Path) -
 }
 
 /// Loads biosample records from a CSV file.
-/// 
+///
 /// # Arguments
-/// 
+///
 /// * `path` - The file path from which to read the CSV
-/// 
+///
 /// # Returns
-/// 
+///
 /// * `Result<Vec<BiosampleRecord>, Box<dyn Error>>` - A vector of BiosampleRecord on success, or an error if the operation fails
 pub fn load_biosample_data(path: &Path) -> Result<Vec<BiosampleRecord>, Box<dyn Error>> {
     // Open the CSV file
