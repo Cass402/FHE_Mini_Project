@@ -13,8 +13,8 @@ RUN apt-get update && \
     rm -rf /var/lib/apt/lists/*
 
 # Create empty project for caching dependencies
-RUN cargo new --bin fhe-biosample-demo
-WORKDIR /usr/src/app/fhe-biosample-demo
+RUN cargo new --bin fhe-mini-project
+WORKDIR /usr/src/app/fhe-mini-project
 COPY Cargo.toml Cargo.lock ./
 
 # Build dependencies only (this layer will be cached if dependencies don't change)
@@ -41,15 +41,15 @@ RUN apt-get update && \
     rm -rf /var/lib/apt/lists/*
 
 # Copy the binary from the builder stage
-COPY --from=builder /usr/src/app/fhe-biosample-demo/target/release/fhe-biosample-demo /app/
-COPY --from=builder /usr/src/app/fhe-biosample-demo/target/release/examples/interactive_demo /app/
+COPY --from=builder /usr/src/app/fhe-mini-project/target/release/fhe-mini-project /app/
+COPY --from=builder /usr/src/app/fhe-mini-project/target/release/examples/interactive_demo /app/
 
 # Create directory for outputs
 RUN mkdir -p /app/data /app/outputs
-COPY --from=builder /usr/src/app/fhe-biosample-demo/README.md /app/
+COPY --from=builder /usr/src/app/fhe-mini-project/README.md /app/
 
 # Set environment variables
 ENV RUST_LOG=info
 
 # Command to run
-ENTRYPOINT ["/app/fhe-biosample-demo"]
+ENTRYPOINT ["/app/fhe-mini-project"]
