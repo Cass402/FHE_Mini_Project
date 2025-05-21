@@ -11,7 +11,7 @@ categories = ["cryptography"]
 
 [dependencies]
 # FHE library- TFHE Rust
-tfhe = { version = "0.5.1", features = ["boolean", "integer", "shortint"]}
+tfhe = { version = "1.2.0", features = ["boolean", "integer", "shortint"]}
 
 # Data libraries
 csv = "1.3"
@@ -30,6 +30,7 @@ log = "0.4.20"
 env_logger = "0.10.0"
 anyhow = "1.0.75"
 thiserror = "1.0.49"
+bincode = "1.3"
 
 [dev-dependencies]
 criterion = "0.5.1"
