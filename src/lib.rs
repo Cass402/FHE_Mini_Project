@@ -10,3 +10,6 @@ pub mod visualization;
 
 // You can also re-export specific items if you want to make them easier to access, e.g.:
 // pub use data_generator::BiosampleRecord;
+
+#[cfg(test)]
+mod property_tests;

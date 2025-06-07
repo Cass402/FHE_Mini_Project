@@ -347,3 +347,512 @@ pub fn encrypt_biosample_data(
 
     Ok(encrypted_data)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::data_generator::{generate_biosample_data, BiosampleRecord};
+    use std::collections::HashSet;
+    use tempfile::tempdir;
+
+    /// Helper function to create test biosample records
+    fn create_test_records() -> Vec<BiosampleRecord> {
+        vec![
+            BiosampleRecord {
+                patient_id: "P001".to_string(),
+                age: 25,
+                gender: "Male".to_string(),
+                blood_type: "A+".to_string(),
+                glucose_level: 95.5,
+                cholesterol_level: 180.0,
+                marker_alpha: true,
+                collection_date: "2023-01-01".to_string(),
+                facility_id: 1,
+            },
+            BiosampleRecord {
+                patient_id: "P002".to_string(),
+                age: 45,
+                gender: "Female".to_string(),
+                blood_type: "O-".to_string(),
+                glucose_level: 110.2,
+                cholesterol_level: 220.5,
+                marker_alpha: false,
+                collection_date: "2023-01-02".to_string(),
+                facility_id: 2,
+            },
+            BiosampleRecord {
+                patient_id: "P003".to_string(),
+                age: 65,
+                gender: "Male".to_string(),
+                blood_type: "B+".to_string(),
+                glucose_level: 88.7,
+                cholesterol_level: 160.3,
+                marker_alpha: true,
+                collection_date: "2023-01-03".to_string(),
+                facility_id: 1,
+            },
+        ]
+    }
+
+    #[test]
+    fn test_biosample_fhe_new() {
+        let fhe = BiosampleFHE::new();
+        // Test that keys are properly initialized (we can't directly test the keys,
+        // but we can test that the struct is created without panicking)
+        assert!(!std::ptr::addr_of!(fhe.client_key).is_null());
+        assert!(!std::ptr::addr_of!(fhe.server_key).is_null());
+    }
+
+    #[test]
+    fn test_biosample_fhe_default() {
+        let fhe = BiosampleFHE::default();
+        // Test that default implementation works
+        assert!(!std::ptr::addr_of!(fhe.client_key).is_null());
+        assert!(!std::ptr::addr_of!(fhe.server_key).is_null());
+    }
+
+    #[test]
+    fn test_encrypt_decrypt_f64_vector() {
+        let fhe = BiosampleFHE::new();
+        let test_values = vec![1.5, 2.7, std::f64::consts::PI, -1.2, 0.0];
+        let scale = 100.0;
+
+        // Encrypt the values
+        let encrypted = fhe.encrypt_f64_vector(&test_values, scale);
+        
+        // Verify encrypted vector structure
+        assert_eq!(encrypted.length, test_values.len());
+        assert_eq!(encrypted.data.len(), test_values.len());
+
+        // Decrypt the values
+        let decrypted = fhe.decrypt_f64_vector(&encrypted, scale);
+        
+        // Verify decrypted values match original (with some tolerance for floating point precision)
+        assert_eq!(decrypted.len(), test_values.len());
+        for (original, decrypted_val) in test_values.iter().zip(decrypted.iter()) {
+            assert!((original - decrypted_val).abs() < 0.01, 
+                   "Original: {}, Decrypted: {}", original, decrypted_val);
+        }
+    }
+
+    #[test]
+    fn test_encrypt_decrypt_f64_vector_empty() {
+        let fhe = BiosampleFHE::new();
+        let test_values: Vec<f64> = vec![];
+        let scale = 100.0;
+
+        let encrypted = fhe.encrypt_f64_vector(&test_values, scale);
+        assert_eq!(encrypted.length, 0);
+        assert_eq!(encrypted.data.len(), 0);
+
+        let decrypted = fhe.decrypt_f64_vector(&encrypted, scale);
+        assert_eq!(decrypted.len(), 0);
+    }
+
+    #[test]
+    fn test_encrypt_decrypt_f64_vector_large_values() {
+        let fhe = BiosampleFHE::new();
+        let test_values = vec![1000.0, -500.0, 999.99];
+        let scale = 10.0;
+
+        let encrypted = fhe.encrypt_f64_vector(&test_values, scale);
+        let decrypted = fhe.decrypt_f64_vector(&encrypted, scale);
+        
+        for (original, decrypted_val) in test_values.iter().zip(decrypted.iter()) {
+            assert!((original - decrypted_val).abs() < 0.1, 
+                   "Original: {}, Decrypted: {}", original, decrypted_val);
+        }
+    }
+
+    #[test]
+    fn test_encrypt_decrypt_bool_vector() {
+        let fhe = BiosampleFHE::new();
+        let test_values = vec![true, false, true, true, false];
+
+        // Encrypt the values
+        let encrypted = fhe.encrypt_bool_vector(&test_values);
+        
+        // Verify encrypted vector structure
+        assert_eq!(encrypted.length, test_values.len());
+        assert_eq!(encrypted.data.len(), test_values.len());
+
+        // Decrypt the values
+        let decrypted = fhe.decrypt_bool_vector(&encrypted);
+        
+        // Verify decrypted values match original
+        assert_eq!(decrypted, test_values);
+    }
+
+    #[test]
+    fn test_encrypt_decrypt_bool_vector_empty() {
+        let fhe = BiosampleFHE::new();
+        let test_values: Vec<bool> = vec![];
+
+        let encrypted = fhe.encrypt_bool_vector(&test_values);
+        assert_eq!(encrypted.length, 0);
+        assert_eq!(encrypted.data.len(), 0);
+
+        let decrypted = fhe.decrypt_bool_vector(&encrypted);
+        assert_eq!(decrypted.len(), 0);
+    }
+
+    #[test]
+    fn test_encrypt_decrypt_bool_vector_all_true() {
+        let fhe = BiosampleFHE::new();
+        let test_values = vec![true; 5];
+
+        let encrypted = fhe.encrypt_bool_vector(&test_values);
+        let decrypted = fhe.decrypt_bool_vector(&encrypted);
+        
+        assert_eq!(decrypted, test_values);
+    }
+
+    #[test]
+    fn test_encrypt_decrypt_bool_vector_all_false() {
+        let fhe = BiosampleFHE::new();
+        let test_values = vec![false; 5];
+
+        let encrypted = fhe.encrypt_bool_vector(&test_values);
+        let decrypted = fhe.decrypt_bool_vector(&encrypted);
+        
+        assert_eq!(decrypted, test_values);
+    }
+
+    #[test]
+    fn test_encrypt_categorical() {
+        let fhe = BiosampleFHE::new();
+        let test_values = vec![
+            "A+".to_string(),
+            "B+".to_string(),
+            "A+".to_string(),
+            "O-".to_string(),
+            "B+".to_string(),
+        ];
+
+        let encrypted_categorical = fhe.encrypt_categorical(&test_values);
+        
+        // Verify categories are extracted correctly
+        let expected_categories: HashSet<String> = test_values.iter().cloned().collect();
+        let actual_categories: HashSet<String> = encrypted_categorical.categories.iter().cloned().collect();
+        assert_eq!(actual_categories, expected_categories);
+        
+        // Verify number of vectors matches number of categories
+        assert_eq!(encrypted_categorical.vectors.len(), encrypted_categorical.categories.len());
+        
+        // Verify each vector has the correct length
+        for vector in &encrypted_categorical.vectors {
+            assert_eq!(vector.length, test_values.len());
+        }
+    }
+
+    #[test]
+    fn test_encrypt_categorical_empty() {
+        let fhe = BiosampleFHE::new();
+        let test_values: Vec<String> = vec![];
+
+        let encrypted_categorical = fhe.encrypt_categorical(&test_values);
+        
+        assert_eq!(encrypted_categorical.categories.len(), 0);
+        assert_eq!(encrypted_categorical.vectors.len(), 0);
+    }
+
+    #[test]
+    fn test_encrypt_categorical_single_category() {
+        let fhe = BiosampleFHE::new();
+        let test_values = vec!["A+".to_string(); 3];
+
+        let encrypted_categorical = fhe.encrypt_categorical(&test_values);
+        
+        assert_eq!(encrypted_categorical.categories.len(), 1);
+        assert_eq!(encrypted_categorical.categories[0], "A+");
+        assert_eq!(encrypted_categorical.vectors.len(), 1);
+        assert_eq!(encrypted_categorical.vectors[0].length, 3);
+    }
+
+    #[test]
+    fn test_encrypt_categorical_consistency() {
+        let fhe = BiosampleFHE::new();
+        let test_values = vec![
+            "Type1".to_string(),
+            "Type2".to_string(),
+            "Type1".to_string(),
+        ];
+
+        let encrypted_categorical = fhe.encrypt_categorical(&test_values);
+        
+        // Find the index of "Type1" in categories
+        let type1_index = encrypted_categorical.categories.iter()
+            .position(|x| x == "Type1").unwrap();
+        
+        // Decrypt the corresponding vector
+        let type1_vector = fhe.decrypt_bool_vector(&encrypted_categorical.vectors[type1_index]);
+        
+        // Should be [true, false, true] for "Type1"
+        assert_eq!(type1_vector, vec![true, false, true]);
+    }
+
+    #[test]
+    fn test_server_key_access() {
+        let fhe = BiosampleFHE::new();
+        let server_key = fhe.server_key();
+        
+        // Test that we can access the server key
+        assert!(!std::ptr::addr_of!(*server_key).is_null());
+    }
+
+    #[test]
+    fn test_save_and_load_keys() {
+        let fhe = BiosampleFHE::new();
+        
+        // Create temporary directory for test files
+        let temp_dir = tempdir().unwrap();
+        let client_key_path = temp_dir.path().join("client_key.bin");
+        let server_key_path = temp_dir.path().join("server_key.bin");
+        
+        // Save keys
+        let save_result = fhe.save_keys(&client_key_path, &server_key_path);
+        assert!(save_result.is_ok());
+        
+        // Verify files were created
+        assert!(client_key_path.exists());
+        assert!(server_key_path.exists());
+        
+        // Load keys
+        let loaded_fhe = BiosampleFHE::load_keys(&client_key_path, &server_key_path);
+        assert!(loaded_fhe.is_ok());
+        
+        let loaded_fhe = loaded_fhe.unwrap();
+        
+        // Test that loaded keys work by encrypting and decrypting
+        let test_values = vec![1.0, 2.0, 3.0];
+        let scale = 100.0;
+        
+        let encrypted = loaded_fhe.encrypt_f64_vector(&test_values, scale);
+        let decrypted = loaded_fhe.decrypt_f64_vector(&encrypted, scale);
+        
+        for (original, decrypted_val) in test_values.iter().zip(decrypted.iter()) {
+            assert!((original - decrypted_val).abs() < 0.01);
+        }
+    }
+
+    #[test]
+    fn test_save_keys_invalid_path() {
+        let fhe = BiosampleFHE::new();
+        
+        // Try to save to an invalid path
+        let invalid_path = Path::new("/invalid/path/that/does/not/exist/key.bin");
+        let result = fhe.save_keys(invalid_path, invalid_path);
+        
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_load_keys_nonexistent_files() {
+        let nonexistent_path = Path::new("nonexistent_key.bin");
+        let result = BiosampleFHE::load_keys(nonexistent_path, nonexistent_path);
+        
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_encrypt_biosample_data() {
+        let fhe = BiosampleFHE::new();
+        let test_records = create_test_records();
+        
+        let encrypted_result = encrypt_biosample_data(&fhe, &test_records);
+        assert!(encrypted_result.is_ok());
+        
+        let encrypted_data = encrypted_result.unwrap();
+        
+        // Verify all expected fields are present
+        assert!(encrypted_data.contains_key("age"));
+        assert!(encrypted_data.contains_key("glucose"));
+        assert!(encrypted_data.contains_key("cholesterol"));
+        assert!(encrypted_data.contains_key("marker"));
+        
+        // Verify blood type fields are present
+        let blood_types: HashSet<String> = test_records.iter()
+            .map(|r| r.blood_type.clone())
+            .collect();
+        
+        for blood_type in blood_types {
+            let key = format!("blood_type_{}", blood_type);
+            assert!(encrypted_data.contains_key(&key), "Missing key: {}", key);
+        }
+        
+        // Verify vector lengths
+        assert_eq!(encrypted_data["age"].length, test_records.len());
+        assert_eq!(encrypted_data["glucose"].length, test_records.len());
+        assert_eq!(encrypted_data["cholesterol"].length, test_records.len());
+        assert_eq!(encrypted_data["marker"].length, test_records.len());
+    }
+
+    #[test]
+    fn test_encrypt_biosample_data_empty() {
+        let fhe = BiosampleFHE::new();
+        let test_records: Vec<BiosampleRecord> = vec![];
+        
+        let encrypted_result = encrypt_biosample_data(&fhe, &test_records);
+        assert!(encrypted_result.is_ok());
+        
+        let encrypted_data = encrypted_result.unwrap();
+        
+        // Should still have the basic fields, but with zero length
+        assert!(encrypted_data.contains_key("age"));
+        assert!(encrypted_data.contains_key("glucose"));
+        assert!(encrypted_data.contains_key("cholesterol"));
+        assert!(encrypted_data.contains_key("marker"));
+        
+        assert_eq!(encrypted_data["age"].length, 0);
+        assert_eq!(encrypted_data["glucose"].length, 0);
+        assert_eq!(encrypted_data["cholesterol"].length, 0);
+        assert_eq!(encrypted_data["marker"].length, 0);
+    }
+
+    #[test]
+    fn test_encrypt_biosample_data_roundtrip() {
+        let fhe = BiosampleFHE::new();
+        let test_records = create_test_records();
+        
+        // Encrypt the data
+        let encrypted_data = encrypt_biosample_data(&fhe, &test_records).unwrap();
+        
+        // Decrypt and verify age data
+        let scale = 100.0;
+        let decrypted_ages = fhe.decrypt_f64_vector(&encrypted_data["age"], scale);
+        let expected_ages: Vec<f64> = test_records.iter().map(|r| r.age as f64).collect();
+        
+        for (expected, actual) in expected_ages.iter().zip(decrypted_ages.iter()) {
+            assert!((expected - actual).abs() < 0.01);
+        }
+        
+        // Decrypt and verify glucose data
+        let decrypted_glucose = fhe.decrypt_f64_vector(&encrypted_data["glucose"], scale);
+        let expected_glucose: Vec<f64> = test_records.iter().map(|r| r.glucose_level).collect();
+        
+        for (expected, actual) in expected_glucose.iter().zip(decrypted_glucose.iter()) {
+            assert!((expected - actual).abs() < 0.01);
+        }
+        
+        // Decrypt and verify marker data
+        let decrypted_marker = fhe.decrypt_bool_vector(&encrypted_data["marker"]);
+        let expected_marker: Vec<bool> = test_records.iter().map(|r| r.marker_alpha).collect();
+        
+        assert_eq!(decrypted_marker, expected_marker);
+    }
+
+    #[test]
+    fn test_encrypt_biosample_data_with_generated_data() {
+        let fhe = BiosampleFHE::new();
+        
+        // Generate test data using the data generator
+        let generated_records = generate_biosample_data(10, 12345).unwrap();
+        
+        let encrypted_result = encrypt_biosample_data(&fhe, &generated_records);
+        assert!(encrypted_result.is_ok());
+        
+        let encrypted_data = encrypted_result.unwrap();
+        
+        // Verify all vectors have the correct length
+        for (key, vector) in &encrypted_data {
+            assert_eq!(vector.length, generated_records.len(), 
+                      "Vector {} has incorrect length", key);
+        }
+    }
+
+    #[test]
+    fn test_encrypted_vector_serialization() {
+        let fhe = BiosampleFHE::new();
+        let test_values = vec![1.0, 2.0, 3.0];
+        let scale = 100.0;
+        
+        let encrypted = fhe.encrypt_f64_vector(&test_values, scale);
+        
+        // Test that EncryptedVector can be serialized and deserialized
+        let serialized = serde_json::to_string(&encrypted).unwrap();
+        let deserialized: EncryptedVector = serde_json::from_str(&serialized).unwrap();
+        
+        assert_eq!(encrypted.length, deserialized.length);
+        assert_eq!(encrypted.data.len(), deserialized.data.len());
+        
+        // Verify that deserialized data can be decrypted correctly
+        let decrypted = fhe.decrypt_f64_vector(&deserialized, scale);
+        for (original, decrypted_val) in test_values.iter().zip(decrypted.iter()) {
+            assert!((original - decrypted_val).abs() < 0.01);
+        }
+    }
+
+    #[test]
+    fn test_encrypted_categorical_serialization() {
+        let fhe = BiosampleFHE::new();
+        let test_values = vec!["A+".to_string(), "B+".to_string(), "A+".to_string()];
+        
+        let encrypted_categorical = fhe.encrypt_categorical(&test_values);
+        
+        // Test that EncryptedCategorical can be serialized and deserialized
+        let serialized = serde_json::to_string(&encrypted_categorical).unwrap();
+        let deserialized: EncryptedCategorical = serde_json::from_str(&serialized).unwrap();
+        
+        assert_eq!(encrypted_categorical.categories, deserialized.categories);
+        assert_eq!(encrypted_categorical.vectors.len(), deserialized.vectors.len());
+        
+        for (original, deserialized_vec) in encrypted_categorical.vectors.iter()
+            .zip(deserialized.vectors.iter()) {
+            assert_eq!(original.length, deserialized_vec.length);
+            assert_eq!(original.data.len(), deserialized_vec.data.len());
+        }
+    }
+
+    #[test]
+    fn test_biosample_fhe_clone() {
+        let fhe = BiosampleFHE::new();
+        let fhe_clone = fhe.clone();
+        
+        // Test that both instances can encrypt/decrypt independently
+        let test_values = vec![1.0, 2.0, 3.0];
+        let scale = 100.0;
+        
+        let encrypted_original = fhe.encrypt_f64_vector(&test_values, scale);
+        let encrypted_clone = fhe_clone.encrypt_f64_vector(&test_values, scale);
+        
+        // Both should be able to decrypt their own encrypted data
+        let decrypted_original = fhe.decrypt_f64_vector(&encrypted_original, scale);
+        let decrypted_clone = fhe_clone.decrypt_f64_vector(&encrypted_clone, scale);
+        
+        // Results should match original values
+        for (original, decrypted_val) in test_values.iter().zip(decrypted_original.iter()) {
+            assert!((original - decrypted_val).abs() < 0.01);
+        }
+        for (original, decrypted_val) in test_values.iter().zip(decrypted_clone.iter()) {
+            assert!((original - decrypted_val).abs() < 0.01);
+        }
+    }
+
+    #[test]
+    fn test_edge_case_zero_values() {
+        let fhe = BiosampleFHE::new();
+        let test_values = vec![0.0; 5];
+        let scale = 100.0;
+        
+        let encrypted = fhe.encrypt_f64_vector(&test_values, scale);
+        let decrypted = fhe.decrypt_f64_vector(&encrypted, scale);
+        
+        for decrypted_val in decrypted.iter() {
+            assert!(decrypted_val.abs() < 0.01);
+        }
+    }
+
+    #[test]
+    fn test_edge_case_negative_values() {
+        let fhe = BiosampleFHE::new();
+        let test_values = vec![-1.0, -2.5, -10.0];
+        let scale = 100.0;
+        
+        let encrypted = fhe.encrypt_f64_vector(&test_values, scale);
+        let decrypted = fhe.decrypt_f64_vector(&encrypted, scale);
+        
+        for (original, decrypted_val) in test_values.iter().zip(decrypted.iter()) {
+            assert!((original - decrypted_val).abs() < 0.01);
+        }
+    }
+}
