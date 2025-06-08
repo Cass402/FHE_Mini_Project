@@ -12,5 +12,6 @@
   },
   "files.watcherExclude": {
     "**/target/**": true
-  }
+  },
+  "codium.codeCompletion.enable": false
 }
